@@ -3,13 +3,36 @@
 <head>
     <title>Neon Space Agar</title>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; color: cyan; font-family: 'Courier New', monospace; }
+        body { margin: 0; background: #050505; overflow: hidden; color: #00ffff; font-family: 'Courier New', monospace; }
         canvas { display: block; }
-        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        /* Estilo del Menú */
+        #menu {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 10, 10, 0.9); padding: 40px; border: 2px solid #00ffff;
+            text-align: center; box-shadow: 0 0 20px #00ffff; z-index: 100;
+        }
+        input { 
+            background: #111; border: 1px solid #00ffff; color: #fff; 
+            padding: 10px; margin-bottom: 20px; font-size: 18px; outline: none;
+        }
+        button {
+            background: #00ffff; color: #000; border: none; padding: 10px 30px;
+            font-size: 20px; cursor: pointer; font-weight: bold;
+        }
+        button:hover { background: #fff; box-shadow: 0 0 15px #fff; }
     </style>
 </head>
 <body>
-    <div id="ui"><h1>SISTEMA SOLAR LOCAL</h1></div>
+    <div id="menu">
+        <h1>NEON SPACE</h1>
+        <input type="text" id="playerName" placeholder="Tu Nombre..." maxlength="12">
+        <br>
+        <button id="playBtn">DESPEGAR</button>
+    </div>
+    <div id="leaderboard" style="position: absolute; top: 20px; right: 20px; background: rgba(0, 255, 255, 0.1); padding: 15px; border: 2px solid #00ffff; color: #00ffff; font-family: 'Courier New'; min-width: 180px; pointer-events: none; border-radius: 10px; box-shadow: 0 0 10px #00ffff;">
+    <h3 style="margin: 0 0 10px 0; text-align: center; border-bottom: 1px solid #00ffff;">TOP PLANETAS</h3>
+    <div id="scores" style="font-size: 14px; line-height: 1.6;"></div>
+    </div>
     <canvas id="gameCanvas"></canvas>
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
