@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Neon Space Agar</title>
+    <style>
+        body { margin: 0; background: #050505; overflow: hidden; color: cyan; font-family: 'Courier New', monospace; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui"><h1>SISTEMA SOLAR LOCAL</h1></div>
+    <canvas id="gameCanvas"></canvas>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
