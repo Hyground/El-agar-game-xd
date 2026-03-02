@@ -1,39 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Space Agar</title>
+    <title>Neon Space - Multijugador</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; color: #00ffff; font-family: 'Courier New', monospace; }
+        body { margin: 0; background: #020202; overflow: hidden; color: #00ffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         canvas { display: block; }
-        /* Estilo del Menú */
+        
         #menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(10, 10, 10, 0.9); padding: 40px; border: 2px solid #00ffff;
-            text-align: center; box-shadow: 0 0 20px #00ffff; z-index: 100;
+            background: rgba(5, 5, 5, 0.95); padding: 50px; border: 3px solid #00ffff;
+            text-align: center; box-shadow: 0 0 30px #00ffff; z-index: 100;
+            border-radius: 15px;
         }
+        
+        h1 { font-size: 40px; text-shadow: 0 0 10px #00ffff; margin-bottom: 30px; }
+        
         input { 
-            background: #111; border: 1px solid #00ffff; color: #fff; 
-            padding: 10px; margin-bottom: 20px; font-size: 18px; outline: none;
+            background: #111; border: 2px solid #00ffff; color: #fff; 
+            padding: 15px; margin-bottom: 25px; font-size: 20px; outline: none;
+            width: 250px; border-radius: 5px; text-align: center;
         }
+        
         button {
-            background: #00ffff; color: #000; border: none; padding: 10px 30px;
-            font-size: 20px; cursor: pointer; font-weight: bold;
+            background: #00ffff; color: #000; border: none; padding: 15px 40px;
+            font-size: 22px; cursor: pointer; font-weight: bold; border-radius: 5px;
+            transition: 0.3s;
         }
-        button:hover { background: #fff; box-shadow: 0 0 15px #fff; }
+        
+        button:hover { background: #fff; box-shadow: 0 0 20px #fff; transform: scale(1.05); }
+
+        /* Ajuste de z-index para que el Scoreboard no desaparezca */
+        #leaderboard {
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(0, 255, 255, 0.1); padding: 15px; 
+            border: 2px solid #00ffff; color: #00ffff; 
+            min-width: 200px; pointer-events: none; border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            z-index: 10; 
+        }
     </style>
 </head>
 <body>
     <div id="menu">
         <h1>NEON SPACE</h1>
-        <input type="text" id="playerName" placeholder="Tu Nombre..." maxlength="12">
+        <input type="text" id="playerName" placeholder="TU NOMBRE..." maxlength="12">
         <br>
-        <button id="playBtn">DESPEGAR</button>
+        <button id="playBtn">INICIAR MISIÓN</button>
     </div>
-    <div id="leaderboard" style="position: absolute; top: 20px; right: 20px; background: rgba(0, 255, 255, 0.1); padding: 15px; border: 2px solid #00ffff; color: #00ffff; font-family: 'Courier New'; min-width: 180px; pointer-events: none; border-radius: 10px; box-shadow: 0 0 10px #00ffff;">
-    <h3 style="margin: 0 0 10px 0; text-align: center; border-bottom: 1px solid #00ffff;">TOP PLANETAS</h3>
-    <div id="scores" style="font-size: 14px; line-height: 1.6;"></div>
+
+    <div id="leaderboard">
+        <h3 style="margin: 0 0 10px 0; text-align: center; border-bottom: 1px solid #00ffff; padding-bottom: 5px;">TOP PILOTOS</h3>
+        <div id="scores" style="font-family: monospace; font-size: 16px; line-height: 1.8;"></div>
     </div>
+
     <canvas id="gameCanvas"></canvas>
+    
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
 </body>
