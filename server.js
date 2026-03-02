@@ -7,169 +7,236 @@ app.use(express.static(__dirname));
 
 let players = {};
 let food = [];
-let blackHoles = [];
+let viruses = [];
 let lootHoles = [];
-const MAP_SIZE = 20000;
+const MAP_SIZE = 15000;
+const START_TIME = Date.now();
 
-// Configuración del universo
-for(let i=0; i<1000; i++) food.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, id: i });
-for(let i=0; i<40; i++) blackHoles.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, size: 100 });
-for(let i=0; i<15; i++) lootHoles.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, size: 80 });
+function initMap() {
+    // Comida Normal
+    for(let i=0; i<1500; i++) food.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, id: Math.random(), color: `hsl(${Math.random()*360}, 100%, 50%)` });
+    // MEGA COMIDA (Solo al inicio, 100 puntos de masa)
+    for(let i=0; i<30; i++) food.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, id: Math.random(), color: '#ffffff', isMega: true, val: 100 });
+    
+    for(let i=0; i<40; i++) viruses.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, size: 100, shots: 0 });
+    for(let i=0; i<25; i++) lootHoles.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, size: 80 });
+}
+initMap();
 
 io.on('connection', (socket) => {
     socket.on('joinGame', (data) => {
         players[socket.id] = {
             name: data.name || "Astronauta",
             color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+            skin: data.skin || null,
             cells: [{ 
                 x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, 
-                size: 50, boostX: 0, boostY: 0, 
-                splitTimer: 0 
+                size: 40, boostX: 0, boostY: 0, splitTimer: 0 
             }],
             targetX: MAP_SIZE/2, targetY: MAP_SIZE/2,
-            speedMultiplier: 1
+            score: 16
         };
     });
 
-    // MECÁNICA DE DIVISIÓN (Barra Espaciadora)
-    socket.on('split', () => {
-        let p = players[socket.id];
-        if (!p) return;
-        let newCells = [];
-        p.cells.forEach(cell => {
-            if (cell.size >= 300) {
-                let halfMass = cell.size / 2;
-                if (halfMass >= 100) {
-                    cell.size = halfMass;
-                    let dx = p.targetX - cell.x;
-                    let dy = p.targetY - cell.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy) || 1;
-                    newCells.push({ 
-                        x: cell.x, y: cell.y, size: halfMass,
-                        boostX: (dx/dist) * 45, boostY: (dy/dist) * 45,
-                        splitTimer: Date.now() + 15000 // No se fusionan por 15 seg
-                    });
-                }
-            }
-        });
-        if (newCells.length > 0) p.cells.push(...newCells);
-    });
-
-    // MECÁNICA DE HACKS
-    socket.on('adminAction', (data) => {
-        let p = players[socket.id];
-        if (!p) return;
-        if (data.type === 'mass') p.cells.forEach(c => c.size = Math.max(10, c.size + data.value));
-        if (data.type === 'teleport') p.cells.forEach(c => { c.x = data.x; c.y = data.y; });
-        if (data.type === 'speed') {
-            p.speedMultiplier = data.value;
-            setTimeout(() => { if(players[socket.id]) players[socket.id].speedMultiplier = 1; }, 10000);
+    socket.on('updatePos', (data) => {
+        if(players[socket.id]) {
+            players[socket.id].targetX = data.x;
+            players[socket.id].targetY = data.y;
         }
     });
 
-    socket.on('updatePos', (data) => {
+    socket.on('split', () => {
         let p = players[socket.id];
-        if(!p) return;
-        p.targetX = data.x;
-        p.targetY = data.y;
+        if (!p || p.cells.length >= 16) return;
+        let newCells = [];
+        p.cells.forEach(cell => {
+            if (cell.size >= 60 && p.cells.length + newCells.length < 16) {
+                cell.size /= 1.4142;
+                let dx = p.targetX - cell.x;
+                let dy = p.targetY - cell.y;
+                let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                newCells.push({ 
+                    x: cell.x, y: cell.y, size: cell.size,
+                    boostX: (dx/dist) * 45, boostY: (dy/dist) * 45,
+                    splitTimer: Date.now() + 10000 
+                });
+            }
+        });
+        p.cells.push(...newCells);
+    });
+
+    socket.on('ejectMass', () => {
+        let p = players[socket.id];
+        if (!p) return;
+        p.cells.forEach(cell => {
+            if (cell.size > 55) {
+                let area = cell.size * cell.size;
+                area -= 400;
+                cell.size = Math.sqrt(area);
+                let dx = p.targetX - cell.x;
+                let dy = p.targetY - cell.y;
+                let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                food.push({
+                    x: cell.x + (dx/dist) * (cell.size + 30),
+                    y: cell.y + (dy/dist) * (cell.size + 30),
+                    id: Math.random(),
+                    val: 18,
+                    boostX: (dx/dist) * 25, boostY: (dy/dist) * 25,
+                    isEjected: true,
+                    color: p.color
+                });
+            }
+        });
+    });
+
+    socket.on('adminAction', (data) => {
+        let p = players[socket.id];
+        if (!p) return;
+        if (data.type === 'mass') {
+            p.cells.forEach(c => {
+                let area = c.size * c.size;
+                area = Math.max(100, area + data.value * 100);
+                c.size = Math.sqrt(area);
+            });
+        }
+        if (data.type === 'merge') {
+            p.cells.forEach(c => c.splitTimer = 0);
+        }
     });
 
     socket.on('disconnect', () => { delete players[socket.id]; });
 });
 
 function updatePhysics() {
+    food.forEach(f => {
+        if (f.boostX || f.boostY) {
+            f.x += f.boostX; f.y += f.boostY;
+            f.boostX *= 0.9; f.boostY *= 0.9;
+        }
+        if(f.isEjected) {
+            viruses.forEach(v => {
+                let d = Math.sqrt((f.x-v.x)**2 + (f.y-v.y)**2);
+                if(d < v.size) {
+                    v.shots++;
+                    f.x = -1000;
+                    if(v.shots >= 7) {
+                        v.shots = 0;
+                        viruses.push({
+                            x: v.x, y: v.y, size: 100, shots: 0,
+                            boostX: f.boostX * 1.5, boostY: f.boostY * 1.5
+                        });
+                    }
+                }
+            });
+        }
+    });
+
     for (let id in players) {
         let p = players[id];
+        let totalMassArea = 0;
+
         p.cells.forEach((cell, i) => {
-            // Movimiento hacia el mouse
             let dx = p.targetX - cell.x;
             let dy = p.targetY - cell.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
             
-            // VELOCIDAD BASE (Ajustable)
-            let baseSpeed = 22 / (1 + cell.size * 0.015);
-            let speed = Math.max(0.6, baseSpeed * (p.speedMultiplier || 1));
+            // NUEVA FÓRMULA DE VELOCIDAD: Más rápida y equilibrada
+            // Empezamos con base 35 y bajamos con una potencia menor (0.35)
+            let speed = Math.max(1.2, (35 / Math.pow(cell.size, 0.35)));
 
-            if (dist > 5) {
+            if (dist > 1) {
                 cell.x += (dx/dist) * speed;
                 cell.y += (dy/dist) * speed;
             }
 
-            // Aplicar Inercia (Boost del split)
             if (cell.boostX || cell.boostY) {
-                cell.x += cell.boostX;
-                cell.y += cell.boostY;
+                cell.x += cell.boostX; cell.y += cell.boostY;
                 cell.boostX *= 0.92; cell.boostY *= 0.92;
-                if(Math.abs(cell.boostX) < 1) cell.boostX = 0;
-                if(Math.abs(cell.boostY) < 1) cell.boostY = 0;
             }
 
-            // Colisión con Comida
+            cell.x = Math.max(cell.size, Math.min(MAP_SIZE - cell.size, cell.x));
+            cell.y = Math.max(cell.size, Math.min(MAP_SIZE - cell.size, cell.y));
+
             for (let j = food.length - 1; j >= 0; j--) {
                 let f = food[j];
-                if (Math.sqrt((cell.x-f.x)**2 + (cell.y-f.y)**2) < cell.size) {
-                    cell.size += (f.val || 2.5);
+                let d = Math.sqrt((cell.x-f.x)**2 + (cell.y-f.y)**2);
+                if (d < cell.size) {
+                    // Si es mega, aumenta el área masivamente (100 puntos de score)
+                    let increment = f.isMega ? 10000 : (f.val || 12) * (f.val || 12);
+                    cell.size = Math.sqrt(cell.size * cell.size + increment);
                     food.splice(j, 1);
-                    if(!f.val) food.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, id: Date.now()+j });
+                    // Solo reaparece si NO es Mega
+                    if(!f.isEjected && !f.isMega) {
+                        food.push({ x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, id: Math.random(), color: `hsl(${Math.random()*360}, 100%, 50%)` });
+                    }
                 }
             }
 
-            // Colisión con Loot (Celeste)
-            lootHoles.forEach((lh, idx) => {
-                if (Math.sqrt((cell.x-lh.x)**2 + (cell.y-lh.y)**2) < cell.size + lh.size) {
-                    cell.size += Math.floor(Math.random() * 31) + 40;
-                    lootHoles[idx] = { x: Math.random()*MAP_SIZE, y: Math.random()*MAP_SIZE, size: 80 };
-                }
-            });
-
-            // Colisión con Agujero Negro (Morado)
-            blackHoles.forEach(bh => {
-                let dX = cell.x - bh.x; let dY = cell.y - bh.y;
-                let d = Math.sqrt(dX*dX + dY*dY);
-                if (d < bh.size + cell.size) {
-                    if (cell.size >= 300) {
-                        // EXPLOSIÓN: Se divide en 6 pedazos y pierde el 80% de masa
-                        let pieces = 6;
-                        let pieceSize = (cell.size * 0.2) / pieces;
-                        cell.size = pieceSize;
-                        for(let k=0; k<pieces-1; k++) {
+            viruses.forEach(v => {
+                let d = Math.sqrt((cell.x-v.x)**2 + (cell.y-v.y)**2);
+                if (d < cell.size && cell.size > v.size * 1.15) {
+                    if (p.cells.length < 16) {
+                        io.to(id).emit('virusHit');
+                        let pieces = 4;
+                        let areaPiece = (cell.size * cell.size) / (pieces + 1);
+                        cell.size = Math.sqrt(areaPiece);
+                        for(let k=0; k<pieces; k++) {
                             p.cells.push({
-                                x: cell.x, y: cell.y, size: pieceSize,
-                                boostX: (Math.random()-0.5)*30, boostY: (Math.random()-0.5)*30,
+                                x: cell.x, y: cell.y, size: cell.size,
+                                boostX: (Math.random()-0.5)*60, boostY: (Math.random()-0.5)*60,
                                 splitTimer: Date.now() + 10000
                             });
                         }
-                    } else if (cell.size > 30) {
-                        cell.size -= 0.5;
+                        v.x = Math.random()*MAP_SIZE; v.y = Math.random()*MAP_SIZE;
                     }
-                    cell.x += dX * 0.05; cell.y += dY * 0.05;
                 }
             });
+
+            totalMassArea += (cell.size * cell.size);
         });
 
-        // Re-fusión y Repulsión entre células del mismo jugador
         for(let i=0; i<p.cells.length; i++) {
             for(let j=i+1; j<p.cells.length; j++) {
                 let c1 = p.cells[i]; let c2 = p.cells[j];
-                let dX = c2.x - c1.x; let dY = c2.y - c1.y;
-                let d = Math.sqrt(dX*dX + dY*dY);
+                let d = Math.sqrt((c2.x-c1.x)**2 + (c2.y-c1.y)**2);
                 let minDist = c1.size + c2.size;
-
                 if (d < minDist) {
-                    // Si el timer de split terminó, se fusionan
                     if (Date.now() > c1.splitTimer && Date.now() > c2.splitTimer) {
-                        c1.size += c2.size;
-                        p.cells.splice(j, 1);
-                        j--;
+                        let newArea = (c1.size * c1.size) + (c2.size * c2.size);
+                        c1.size = Math.sqrt(newArea);
+                        p.cells.splice(j, 1); j--;
                     } else {
-                        // Si no, se empujan (repulsión física)
-                        let force = (minDist - d) / 8;
-                        let angle = Math.atan2(dY, dX);
+                        let force = (minDist - d) / 10;
+                        let angle = Math.atan2(c2.y - c1.y, c2.x - c1.x);
                         c1.x -= Math.cos(angle) * force; c1.y -= Math.sin(angle) * force;
                         c2.x += Math.cos(angle) * force; c2.y += Math.sin(angle) * force;
                     }
                 }
             }
+        }
+        p.score = Math.floor(totalMassArea / 100);
+    }
+
+    let ids = Object.keys(players);
+    for(let i=0; i<ids.length; i++) {
+        for(let j=0; j<ids.length; j++) {
+            if(i === j) continue;
+            let p1 = players[ids[i]]; let p2 = players[ids[j]];
+            p1.cells.forEach(c1 => {
+                for(let k=p2.cells.length-1; k>=0; k--) {
+                    let c2 = p2.cells[k];
+                    let d = Math.sqrt((c1.x-c2.x)**2 + (c1.y-c2.y)**2);
+                    if(d < c1.size - c2.size/2 && c1.size > c2.size * 1.15) {
+                        let newArea = (c1.size * c1.size) + (c2.size * c2.size);
+                        c1.size = Math.sqrt(newArea);
+                        p2.cells.splice(k, 1);
+                        if(p2.cells.length === 0) {
+                            io.to(ids[j]).emit('gameOver');
+                            delete players[ids[j]];
+                        }
+                    }
+                }
+            });
         }
     }
 }
@@ -177,12 +244,9 @@ function updatePhysics() {
 setInterval(() => {
     updatePhysics();
     let leaderboard = Object.values(players)
-        .map(p => ({ 
-            name: p.name, 
-            score: Math.floor(p.cells.reduce((sum, c) => sum + c.size, 0)) 
-        }))
-        .sort((a, b) => b.score - a.score).slice(0, 5);
-    io.emit('gameState', { players, food, blackHoles, lootHoles, leaderboard });
+        .map(p => ({ name: p.name, score: p.score }))
+        .sort((a,b) => b.score - a.score).slice(0, 10);
+    io.emit('gameState', { players, food, viruses, leaderboard, mapSize: MAP_SIZE });
 }, 1000/60);
 
-http.listen(3000, '0.0.0.0', () => { console.log('NEON SPACE RUNNING ON PORT 3000'); });
+http.listen(3000, '0.0.0.0', () => { console.log('AGAR PI NEON MEGA RUNNING ON PORT 3000'); });

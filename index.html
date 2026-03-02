@@ -1,42 +1,119 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neon Space Agar</title>
+    <title>AGAR PI: NEON EDITION</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; color: #00ffff; font-family: 'Courier New', monospace; }
-        canvas { display: block; z-index: 1; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Ubuntu:wght@400;700&display=swap');
+        
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Ubuntu', sans-serif; color: #fff; }
+        canvas { display: block; }
+        
         #menu {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(10, 10, 10, 0.95); padding: 50px; border: 3px solid #00ffff;
-            text-align: center; box-shadow: 0 0 30px #00ffff; z-index: 100; border-radius: 10px;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(20,0,40,0.9) 0%, rgba(0,0,0,1) 100%);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
         }
-        input { background: #111; border: 2px solid #00ffff; color: #fff; padding: 15px; margin-bottom: 25px; font-size: 20px; outline: none; width: 300px; text-align: center; }
-        button { background: #00ffff; color: #000; border: none; padding: 15px 40px; font-size: 22px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #fff; box-shadow: 0 0 20px #fff; }
+        .container {
+            background: rgba(10, 10, 15, 0.95); padding: 30px; border-radius: 15px; width: 450px; text-align: center;
+            border: 2px solid #00ffff; box-shadow: 0 0 20px #00ffff;
+            position: relative;
+        }
+
+        h1 { margin-top: 0; font-family: 'Orbitron', sans-serif; color: #00ffff; text-shadow: 0 0 10px #00ffff; font-size: 32px; }
+        
+        input[type="text"] { 
+            width: 80%; padding: 12px; margin: 15px 0; border: 2px solid #00ffff; background: #050505; 
+            color: #fff; border-radius: 8px; font-size: 16px; outline: none; 
+        }
+        
+        .skin-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+        .skin-item { width: 100%; aspect-ratio: 1; border-radius: 10px; cursor: pointer; border: 2px solid #333; background-size: cover; }
+        .skin-item.active { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }
+        
+        .mode-selector { display: flex; gap: 5px; margin: 15px 0; justify-content: center; }
+        .mode-btn { 
+            flex: 1; padding: 10px 5px; font-size: 10px; font-family: 'Orbitron', sans-serif; 
+            background: #111; border: 1px solid #444; color: #aaa; cursor: pointer; border-radius: 5px;
+        }
+        .mode-btn.active { border-color: #00ffff; color: #00ffff; box-shadow: 0 0 10px #00ffff; background: #002222; }
+
+        #playBtn { 
+            width: 90%; padding: 15px; background: linear-gradient(45deg, #00ffff, #ff00ff); 
+            color: #fff; border: none; border-radius: 8px; font-size: 20px; font-family: 'Orbitron', sans-serif; 
+            font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        
+        #gameUI { display: none; }
         #leaderboard {
-            position: absolute; top: 20px; right: 20px; background: rgba(0, 255, 255, 0.1); 
-            padding: 20px; border: 2px solid #00ffff; color: #00ffff; min-width: 200px; 
-            pointer-events: none; z-index: 10; border-radius: 5px; backdrop-filter: blur(5px);
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8);
+            color: #00ffff; padding: 15px; border-radius: 10px; min-width: 200px; 
+            border: 2px solid #ff00ff; pointer-events: none;
         }
+        #minimap-container {
+            position: absolute; top: 15px; left: 15px; width: 150px; height: 150px;
+            background: rgba(0,0,0,0.8); border: 2px solid #00ffff; border-radius: 10px;
+        }
+        #fpsCounter {
+            position: absolute; top: 15px; left: 175px; color: #00ffff; font-family: 'Orbitron', sans-serif; font-size: 12px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; border: 1px solid #00ffff;
+        }
+        #hacksMenu {
+            position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.8);
+            padding: 10px; border-radius: 10px; border: 1px solid #f00; z-index: 100;
+        }
+        .hack-btn { background: #200; color: #f55; border: 1px solid #f55; padding: 5px; cursor: pointer; margin-right: 5px; }
+
+        #cropModal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #050505; padding: 20px; border-radius: 15px; z-index: 2000; border: 3px solid #00ffff;
+        }
+        #cropCanvas { border: 2px solid #ff00ff; cursor: crosshair; background: #000; }
     </style>
 </head>
 <body>
     <div id="menu">
-        <h1 style="font-size: 45px; text-shadow: 0 0 15px #00ffff;">NEON SPACE</h1>
-        <input type="text" id="playerName" placeholder="Tu Nombre..." maxlength="12">
-        <br>
-        <button id="playBtn">DESPEGAR</button>
+        <div class="container">
+            <h1>AGAR PI NEON</h1>
+            <input type="text" id="playerName" placeholder="ID DEL PILOTO..." maxlength="15">
+            
+            <div class="skin-list" id="skinSelector"></div>
+            
+            <div style="font-size: 12px; color: #00ffff; margin-top: 10px;">RENDIMIENTO GRÁFICO:</div>
+            <div class="mode-selector">
+                <button class="mode-btn active" id="modeUltra" onclick="setGfx('ultra')">ULTRA</button>
+                <button class="mode-btn" id="modeComp" onclick="setGfx('comp')">COMP</button>
+                <button class="mode-btn" id="modePerf" onclick="setGfx('perf')">RENDIM.</button>
+            </div>
+
+            <input type="file" id="fileInput" style="display: none;" accept="image/*">
+            <button id="customBtn" style="background:#111; border:1px dashed #ff00ff; color:#ff00ff; padding:10px; width:90%; margin-bottom:15px; cursor:pointer;">📷 SUBIR SKIN</button>
+            <button id="playBtn">DESPEGAR</button>
+        </div>
     </div>
-    
-    <div id="leaderboard">
-        <h3 style="margin: 0 0 10px 0; text-align: center; border-bottom: 2px solid #00ffff; padding-bottom: 5px;">RANKING ESPACIAL</h3>
-        <div id="scores"></div>
+
+    <div id="gameUI">
+        <div id="leaderboard">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; border-bottom: 1px solid #ff00ff; padding-bottom: 5px; margin-bottom: 8px; color: #ff00ff; text-align: center;">TOP PILOTOS</div>
+            <div id="scores"></div>
+        </div>
+        <div id="fpsCounter">FPS: 0</div>
+        <div id="minimap-container">
+            <canvas id="minimap" width="150" height="150"></canvas>
+        </div>
+        <div id="hacksMenu">
+            <button class="hack-btn" onclick="socket.emit('adminAction', {type: 'mass', value: 50})">+ MASA</button>
+            <button class="hack-btn" onclick="socket.emit('adminAction', {type: 'merge'})">FUSION</button>
+        </div>
+    </div>
+
+    <div id="cropModal">
+        <canvas id="cropCanvas" width="300" height="300"></canvas>
+        <br><br>
+        <button id="confirmCrop" style="background: #00ffff; border: none; padding: 10px 20px; cursor: pointer; font-family: 'Orbitron', sans-serif;">CONFIRMAR</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
-    <script src="hacks.js"></script>
 </body>
 </html>
